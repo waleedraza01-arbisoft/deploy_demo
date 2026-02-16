@@ -26,7 +26,8 @@ jobs:
 
       - name: Run Tests
         run: |
-          pytest tests/
+          # Use python -m to ensure the current directory is in sys.path
+          python -m pytest tests/
 
   # Job 2: Build and Push Docker Image (Runs only if Tests pass)
   build-and-push:
