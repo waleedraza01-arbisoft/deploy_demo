@@ -1,0 +1,67 @@
+name: CI/CD Translation Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Job 1: Integration Testing
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r app/requirements.txt
+          pip install pytest httpx
+
+      - name: Run Tests
+        run: |
+          pytest tests/
+
+  # Job 2: Build and Push Docker Image (Runs only if Tests pass)
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' # Only push on merge to main
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          # We tag it with the commit SHA for versioning, and 'latest'
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/translation-confidence:latest
+            ${{ secrets.DOCKER_USERNAME }}/translation-confidence:${{ github.sha }}
+
+  # Job 3: Emulate Deployment (Runs only if Build succeeds)
+  deploy-emulation:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simulate Deployment Trigger
+        run: |
+          echo "🚀 Starting Deployment Process..."
+          echo "⬇️  Pulling image: ${{ secrets.DOCKER_USERNAME }}/translation-confidence:latest"
+          echo "🔄 Restarting Service Clusters..."
+          echo "✅ Deployment Successful! Service is live."
+          echo "📝 App version: ${{ github.sha }}"
